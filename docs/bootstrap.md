@@ -1,0 +1,40 @@
+# 初期構築の手順
+
+Terraform を動かすための前提は、Terraform では作れないので最初だけ手動で用意する。作った秘密はすべて Bitwarden に保存する。
+
+## 1. GitHub
+
+- [ ] このリポジトリを公開リポジトリとして作る
+- [ ] シークレットスキャンと push protection を有効にする
+- [ ] main のブランチ保護（ruleset）を設定する
+  - 直接 push を禁止し、PR を必須にする
+  - マージには1件以上の承認を必須にする
+- [ ] AI 用の GitHub App を作り、このリポジトリにインストールする
+  - 権限: Contents（write）、Pull requests（write）のみ
+- [ ] fine-grained PAT を2つ作る
+  - `GH_ADMIN_TOKEN`: リポジトリの作成・管理、Secrets・Environments の書き込み
+  - `GH_READ_TOKEN`: 読み取りのみ
+
+## 2. Cloudflare
+
+- [ ] R2 バケット `tfstate-platform` を手動で作る
+- [ ] `tfstate-platform` 用の R2 キーを2つ作る
+  - 読み書き用（apply 用）
+  - 読み取り専用（plan 用）
+- [ ] ブートストラップ用 Cloudflare トークンを作る（権限は [secrets](secrets.md) を参照）
+- [ ] 読み取り専用の Cloudflare トークンを作る
+
+## 3. GitHub Environments
+
+- [ ] Environment `platform-plan` と `platform-apply` を作る
+  - required reviewers: 自分
+  - 使えるブランチ: main のみ
+- [ ] それぞれに Secrets を登録する（一覧は [secrets](secrets.md) を参照）
+
+## 4. 最初の PR
+
+- [ ] backend 設定、provider 設定、plan/apply のワークフローを追加する
+- [ ] `tfstate-platform` バケットを `import` ブロックで取り込み、`prevent_destroy` を付ける
+- [ ] `/plan` → マージ → apply が通ることを確認する
+
+ここまでできたら、以降の変更はすべて PR 経由で行う。
