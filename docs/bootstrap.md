@@ -17,12 +17,24 @@ Terraform を動かすための前提は、Terraform では作れないので最
 
 ## 2. Cloudflare
 
-- [ ] R2 バケット `tfstate-platform` を手動で作る
+### ログイン
+
+- [ ] Cloudflare のログインで2段階認証を有効にする（両方のアカウントを守る最後の砦）
+
+### state アカウント（新しく作る）
+
+- [ ] platform の state 専用の Cloudflare アカウントを作る
+- [ ] R2 を有効にする
+- [ ] R2 バケット `tfstate-platform` を作る（Terraform では管理しないので、削除しないよう注意する）
 - [ ] `tfstate-platform` 用の R2 キーを2つ作る
   - 読み書き用（apply 用）
   - 読み取り専用（plan 用）
-- [ ] ブートストラップ用 Cloudflare トークンを作る（権限は [secrets](secrets.md) を参照）
-- [ ] 読み取り専用の Cloudflare トークンを作る
+- [ ] このアカウントには、これ以外のものを置かない
+
+### メインアカウント
+
+- [ ] ブートストラップ用 Cloudflare トークンを作る（権限は [secrets](secrets.md) を参照）。メインアカウントだけに効くように作る
+- [ ] 読み取り専用の Cloudflare トークンを作る。こちらもメインアカウントだけに効くように作る
 
 ## 3. GitHub Environments
 
@@ -33,8 +45,7 @@ Terraform を動かすための前提は、Terraform では作れないので最
 
 ## 4. 最初の PR
 
-- [ ] backend 設定、provider 設定、plan/apply のワークフローを追加する
-- [ ] `tfstate-platform` バケットを `import` ブロックで取り込み、`prevent_destroy` を付ける
+- [ ] backend 設定（state アカウントの `tfstate-platform`）、provider 設定、plan/apply のワークフローを追加する
 - [ ] `/plan` → マージ → apply が通ることを確認する
 
 ここまでできたら、以降の変更はすべて PR 経由で行う。

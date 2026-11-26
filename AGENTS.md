@@ -12,6 +12,10 @@
 - **秘密を `output` に出さない。** どうしても必要な場合は `sensitive = true` を付ける。
 - **platform リポジトリ自身の GitHub 設定（ブランチ保護、Environments）を Terraform で管理しない。**
 - **削除されると困るリソース（GitHub リポジトリ、tfstate 用バケット）には `prevent_destroy` を付ける。** GitHub リポジトリには `archive_on_destroy = true` も付ける。
+- **state アカウントを Terraform で扱わない。** state アカウントには `tfstate-platform` バケットと R2 キーしか置かない。
+- **プロジェクト用の Cloudflare トークンは、メインアカウントのアカウントトークン（`cloudflare_account_token`）として発行する。** ユーザートークンは使わない。
+- **プロジェクト用トークンに、トークンを作れる権限を付けない。** `API Tokens Edit`、`Account API Tokens Edit`、メンバー管理、アカウント設定の編集などは渡さない。
+- **プロジェクト側の Terraform で強い秘密を作らせない。** API トークン、Access のサービストークン、Worker 用のシークレット、生成したパスワードなどは platform で作って渡す。
 
 ## PR の書き方
 

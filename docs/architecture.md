@@ -7,6 +7,7 @@
 │ platform リポジトリ（このリポジトリ）          │
 │  - アカウント共有: ゾーン、Access IdP/共有ポリシー │
 │  - プロジェクトの土台を発行                     │
+│  - state は state アカウントに置く               │
 └──────────────────────┬───────────────────────┘
                        │ プロジェクトごとに作成・発行
                        ▼
@@ -14,8 +15,20 @@
 │ 各プロジェクトのリポジトリ（例: kaidoki）        │
 │  - アプリ固有: Worker、D1、KV、Access アプリ等   │
 │  - 自分の CI で terraform apply                 │
+│  - state はメインアカウントに置く                │
 └──────────────────────────────────────────────┘
 ```
+
+## Cloudflare アカウントは2つ使う
+
+| アカウント | 中身 | 触れるもの |
+| --- | --- | --- |
+| メインアカウント | ゾーン、Access、各プロジェクトのリソース、`tfstate-<project>` バケット | platform と各プロジェクト |
+| state アカウント | `tfstate-platform` バケットだけ | platform の CI だけ |
+
+platform の state には全プロジェクトのトークン値が入っている。同じアカウントに置くと、アカウント全体に効く権限（R2 の Admin 権限など）を持つプロジェクトから読めてしまう。アカウントを分ければ、プロジェクトのトークンはメインアカウントにしか効かないので、権限の組み合わせに関係なく state アカウントには届かない（経緯は [decisions](decisions.md)）。
+
+state アカウントは Terraform で管理しない。中身は手動で作った `tfstate-platform` バケットと、それを読み書きする R2 キーだけにする。
 
 ### 分け方の基準
 
@@ -49,18 +62,33 @@ module "kaidoki" {
 
 R2 の S3 認証情報は Cloudflare API トークンから作れる。Access Key ID がトークンの ID、Secret Access Key がトークン値の SHA-256 ハッシュになる。そのため、Terraform の `sha256()` で変換して Secrets に書き込む。
 
+### プロジェクト用トークンのルール
+
+- **メインアカウントのアカウントトークン（`cloudflare_account_token`）として発行する。** ユーザートークンは設定次第で複数のアカウントにまたがるので使わない。
+- **トークンを作れる権限は渡さない。** `API Tokens Edit`（User）、`Account API Tokens Edit`、メンバー管理、アカウント設定の編集権限など、権限を広げられるものはプロジェクトに渡さない。
+- **R2 の Admin 権限（`Workers R2 Storage Write`）は、必要なプロジェクトには渡してよい。** バケットを作るにはこの権限が必要で、これはアカウント内の全バケットに効く。そのプロジェクトは他のプロジェクトの state やデータも読めるようになるが、このトレードオフは受け入れる（[decisions](decisions.md)）。
+
+### プロジェクト側の state に強い秘密を置かない
+
+他のプロジェクトの state は読まれうる前提なので、強い秘密は platform で作って渡す。プロジェクト側の Terraform では次のものを作らない。
+
+- Cloudflare の API トークン
+- Access のサービストークン
+- Worker 用のシークレット
+- `random_password` などで生成するパスワードや鍵
+
 ## tfstate の置き場所
 
-| バケット | 用途 | 作り方 |
-| --- | --- | --- |
-| `tfstate-platform` | platform 自身の state | 最初だけ手動で作り、あとで import して `prevent_destroy` を付ける |
-| `tfstate-<project>` | 各プロジェクトの state | platform が作る |
+| バケット | アカウント | 用途 | 作り方 |
+| --- | --- | --- | --- |
+| `tfstate-platform` | state アカウント | platform 自身の state | 手動で作る。Terraform では管理しない |
+| `tfstate-<project>` | メインアカウント | 各プロジェクトの state | platform が作る |
 
-- バケットをプロジェクトごとに分ける理由: R2 の通常のトークンはバケット単位でしか権限を絞れない。各プロジェクトの CI が他のプロジェクトの state を読めないように、バケットごと分ける。
-- platform の state には全プロジェクトのトークン値が平文で入る。そのため `tfstate-platform` は platform の CI 以外から触れないようにする。
+- platform の state には全プロジェクトのトークン値が平文で入る。そのため `tfstate-platform` は別アカウントに置き、platform の CI 以外から触れないようにする。
+- プロジェクトの state をバケットごとに分ける理由: R2 の通常のトークンはバケット単位でしか権限を絞れない。R2 の Admin 権限を持たないプロジェクトが、他のプロジェクトの state を読めないようにする。Admin 権限を持つプロジェクトにはこの分離は効かないが、それは受け入れる。
 - ロックは S3 backend の `use_lockfile = true` を使う（R2 の条件付き書き込みで動く。Terraform 1.10 以降）。
 
-backend 設定の例:
+platform の backend 設定の例（`<STATE_ACCOUNT_ID>` は state アカウントの ID）:
 
 ```hcl
 terraform {
@@ -68,7 +96,7 @@ terraform {
     bucket                      = "tfstate-platform"
     key                         = "platform/terraform.tfstate"
     region                      = "auto"
-    endpoints                   = { s3 = "https://<ACCOUNT_ID>.r2.cloudflarestorage.com" }
+    endpoints                   = { s3 = "https://<STATE_ACCOUNT_ID>.r2.cloudflarestorage.com" }
     use_lockfile                = true
     skip_credentials_validation = true
     skip_region_validation      = true
