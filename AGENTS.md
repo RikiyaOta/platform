@@ -15,6 +15,7 @@
 - **state アカウントを Terraform で扱わない。** state アカウントには `tfstate-platform` バケットと R2 キーしか置かない。
 - **プロジェクト用の Cloudflare トークンは、メインアカウントのアカウントトークン（`cloudflare_account_token`）として発行する。** ユーザートークンは使わない。
 - **プロジェクト用トークンに、トークンを作れる権限を付けない。** `API Tokens Edit`、`Account API Tokens Edit`、メンバー管理、アカウント設定の編集などは渡さない。
+- **R2 バケットはすべて platform で作る。プロジェクト用トークンに R2 の Admin 権限（`Workers R2 Storage Write` / `Read`）を付けない。** プロジェクトがバケットを必要とするときは、`modules/project` の `r2_buckets` に追加する。
 - **プロジェクト側の Terraform で強い秘密を作らせない。** API トークン、Access のサービストークン、Worker 用のシークレット、生成したパスワードなどは platform で作って渡す。
 
 ## PR の書き方

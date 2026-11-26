@@ -8,7 +8,7 @@
 
 | 区分 | リソース |
 | --- | --- |
-| プロジェクトの土台 | GitHub リポジトリ、ブランチ保護、tfstate 用 R2 バケット、そのバケット専用の R2 キー、プロジェクト用 Cloudflare API トークン、それらを渡す GitHub Actions Secrets |
+| プロジェクトの土台 | GitHub リポジトリ、ブランチ保護、tfstate 用 R2 バケット、アプリ用 R2 バケット（R2 バケットはすべて platform で作る）、バケット専用の R2 キー、プロジェクト用 Cloudflare API トークン、それらを渡す GitHub Actions Secrets |
 | アカウント共有 | ゾーン、Cloudflare Access のログイン方法（IdP）、使い回す Access ポリシー |
 
 ## 管理しないもの
