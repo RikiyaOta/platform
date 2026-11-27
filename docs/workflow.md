@@ -13,8 +13,10 @@
    - ワークフローは次の場合に何もせず終了する:
      - コメントしたのが自分（`author_association == 'OWNER'`）でない
      - PR のブランチがフォークから来ている
-4. **Environment `platform-plan` の承認**
-   - required reviewers（自分）の承認後に、Secrets がジョブに渡る。
+4. **plan ジョブの実行を承認する（PR の承認とは別物）**
+   - plan ジョブは Environment `platform-plan` を使う。この Environment には required reviewers（自分）を設定しているので、ジョブは「承認待ち」で止まる。
+   - Actions の画面（または PR に出る通知）で「Review deployments」→「Approve and deploy」を押すと、Secrets がジョブに渡されて plan が動く。
+   - `/plan` のコメント者チェックをすり抜けられても、ここで自分が承認しない限り鍵は渡らない。最後の防壁として置いている。
 5. **plan の結果を確認する**
    - 結果は PR にコメントされる。`destroy` や `replace` が出ていたら、必ず理由を確認する。
 6. **自分が承認してマージする**

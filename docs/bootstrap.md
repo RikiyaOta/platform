@@ -21,7 +21,7 @@ Terraform を動かすための前提は、Terraform では作れないので最
 
 - [ ] Cloudflare のログインで2段階認証を有効にする（両方のアカウントを守る最後の砦）
 
-### state アカウント（新しく作る）
+### platform アカウント（新しく作る）
 
 - [ ] platform の state 専用の Cloudflare アカウントを作る
 - [ ] R2 を有効にする
@@ -45,7 +45,7 @@ Terraform を動かすための前提は、Terraform では作れないので最
 
 ## 4. 最初の PR
 
-- [ ] backend 設定（state アカウントの `platform-tfstate`）、provider 設定、plan/apply のワークフローを追加する
+- [ ] backend 設定（platform アカウントの `platform-tfstate`）、provider 設定、plan/apply のワークフローを追加する
 - [ ] `/plan` → マージ → apply が通ることを確認する
 
 ここまでできたら、以降の変更はすべて PR 経由で行う。

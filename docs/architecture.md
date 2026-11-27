@@ -7,13 +7,13 @@
 │ platform リポジトリ（このリポジトリ）          │
 │  - アカウント共有: ゾーン、Access IdP/共有ポリシー │
 │  - プロジェクトの土台を発行                     │
-│  - state は state アカウントに置く               │
+│  - state は platform アカウントに置く            │
 └──────────────────────┬───────────────────────┘
                        │ プロジェクトごとに作成・発行
                        ▼
 ┌──────────────────────────────────────────────┐
-│ 各プロジェクトのリポジトリ（例: kaidoki）        │
-│  - アプリ固有: Worker、D1、KV、Access アプリ等   │
+│ 各プロジェクトのリポジトリ（例: example-app）    │
+│  - アプリ固有: Worker、D1、KV、R2、Access アプリ等 │
 │  - 自分の CI で terraform apply                 │
 │  - state はメインアカウントに置く                │
 └──────────────────────────────────────────────┘
@@ -21,14 +21,21 @@
 
 ## Cloudflare アカウントは2つ使う
 
-| アカウント | 中身 | 触れるもの |
+| アカウント | 中身 | このアカウントの鍵を持つもの |
 | --- | --- | --- |
-| メインアカウント | ゾーン、Access、各プロジェクトのリソース、`<project>-tfstate` バケット | platform と各プロジェクト |
-| state アカウント | `platform-tfstate` バケットだけ | platform の CI だけ |
+| メインアカウント | ゾーン、Access、各プロジェクトのリソース、`<project>-tfstate` バケット | platform の CI、各プロジェクトの CI |
+| platform アカウント | `platform-tfstate` バケットだけ | platform の CI だけ |
 
-platform の state には全プロジェクトのトークン値が入っている。同じアカウントに置くと、アカウント全体に効く権限（R2 の Admin 権限など）を持つプロジェクトから読めてしまう。アカウントを分ければ、プロジェクトのトークンはメインアカウントにしか効かないので、権限の組み合わせに関係なく state アカウントには届かない（経緯は [decisions](decisions.md)）。
+鍵の持ち方で見ると、次のようになる。
 
-state アカウントは Terraform で管理しない。中身は手動で作った `platform-tfstate` バケットと、それを読み書きする R2 キーだけにする。
+- **platform の CI**: 両方のアカウントの鍵を持つ。platform アカウントの R2 キー（`platform-tfstate` を読み書きする）と、メインアカウントの強いトークン（トークンの発行もできる）。いちばん強い権限を持つので、[workflow](workflow.md) の手順で守る。
+- **各プロジェクトの CI**: メインアカウントの鍵だけを持つ。platform アカウントの鍵は持たないので、どんな権限の組み合わせでも `platform-tfstate` には届かない。
+
+アカウント自体が他のアカウントに対して権限を持つことはない。権限を持つのは、それぞれのアカウントで発行した鍵だけ。
+
+アカウントを分ける理由: platform の state には全プロジェクトのトークン値が入っている。メインアカウントに置くと、R2 の Admin 権限や Worker のバインディングを使えるプロジェクトから読めてしまう（経緯は [decisions](decisions.md)）。
+
+platform アカウントは Terraform で管理しない。中身は手動で作った `platform-tfstate` バケットと、それを読み書きする R2 キーだけにする。
 
 ### 分け方の基準
 
@@ -42,9 +49,9 @@ Cloudflare Access は、ログイン方法（IdP）、チームドメイン、�
 プロジェクトは `modules/project` モジュールを1つ追加することで作る想定。
 
 ```hcl
-module "kaidoki" {
+module "example_app" {
   source = "./modules/project"
-  name   = "kaidoki"
+  name   = "example-app"
   # 必要な Cloudflare 権限など
 }
 ```
@@ -64,7 +71,7 @@ module "kaidoki" {
 
 | バケット | 誰が作るか | 置き場所 |
 | --- | --- | --- |
-| `platform-tfstate` | 手動 | state アカウント |
+| `platform-tfstate` | 手動 | platform アカウント |
 | `<project>-tfstate`（各プロジェクトの state） | platform | メインアカウント |
 | アプリ用のバケット（アプリのロジックが使うもの） | 各プロジェクト | メインアカウント |
 
@@ -92,33 +99,16 @@ Worker をデプロイできるプロジェクトは、バインディング経�
 
 | バケット | アカウント | 用途 | 作り方 |
 | --- | --- | --- | --- |
-| `platform-tfstate` | state アカウント | platform 自身の state | 手動で作る。Terraform では管理しない |
+| `platform-tfstate` | platform アカウント | platform 自身の state | 手動で作る。Terraform では管理しない |
 | `<project>-tfstate` | メインアカウント | 各プロジェクトの state | platform が作る |
 
 - platform の state には全プロジェクトのトークン値が平文で入る。そのため `platform-tfstate` は別アカウントに置き、platform の CI 以外から触れないようにする。
 - プロジェクトの state をバケットごとに分ける理由: R2 の通常のトークンはバケット単位でしか権限を絞れない。各プロジェクトの CI が、state 用の R2 キーで他のプロジェクトの state を読めないようにする。ただし、R2 の Admin 権限や Worker のバインディング経由では届くので、完全な分離ではない（[decisions](decisions.md#11-プロジェクト同士はバインディングで筒抜けになることを受け入れる)）。
-- ロックは S3 backend の `use_lockfile = true` を使う（R2 の条件付き書き込みで動く。Terraform 1.10 以降）。
+- ロックは S3 backend の `use_lockfile = true` を使う（R2 の条件付き書き込みで動く）。
 
-platform の backend 設定の例（`<STATE_ACCOUNT_ID>` は state アカウントの ID）:
-
-```hcl
-terraform {
-  backend "s3" {
-    bucket                      = "platform-tfstate"
-    key                         = "platform/terraform.tfstate"
-    region                      = "auto"
-    endpoints                   = { s3 = "https://<STATE_ACCOUNT_ID>.r2.cloudflarestorage.com" }
-    use_lockfile                = true
-    skip_credentials_validation = true
-    skip_region_validation      = true
-    skip_requesting_account_id  = true
-    skip_metadata_api_check     = true
-    skip_s3_checksum            = true
-  }
-}
-```
+backend の具体的な設定は、Terraform のコード（`backend` ブロック）を正とする。
 
 ## Provider
 
-- `cloudflare/cloudflare` v5 系（トークン系リソースは 5.13 で破壊的変更があったので、それ以降を使う）
+- `cloudflare/cloudflare`（トークン系のリソースは過去に破壊的変更があったので、新しめの版を使う）
 - `integrations/github`

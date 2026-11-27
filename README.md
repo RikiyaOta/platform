@@ -15,7 +15,7 @@
 
 - 各プロジェクトのアプリ固有リソース（Worker、D1、KV、アプリ用の R2 バケット、Access アプリケーションなど）→ 各プロジェクトのリポジトリで管理
 - この platform リポジトリ自身の GitHub 設定（ブランチ保護、Environments）→ 手動で設定する（理由は [decisions](docs/decisions.md)）
-- platform の state を置く Cloudflare アカウント（state アカウント）→ 手動で管理する。中身は `platform-tfstate` バケットと R2 キーだけ（[architecture](docs/architecture.md)）
+- platform の state を置く Cloudflare アカウント（platform アカウント）→ 手動で管理する。中身は `platform-tfstate` バケットと R2 キーだけ（[architecture](docs/architecture.md)）
 
 ## 変更の流れ
 
