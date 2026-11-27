@@ -23,12 +23,12 @@
 
 | アカウント | 中身 | 触れるもの |
 | --- | --- | --- |
-| メインアカウント | ゾーン、Access、各プロジェクトのリソース、`tfstate-<project>` バケット | platform と各プロジェクト |
-| state アカウント | `tfstate-platform` バケットだけ | platform の CI だけ |
+| メインアカウント | ゾーン、Access、各プロジェクトのリソース、`<project>-tfstate` バケット | platform と各プロジェクト |
+| state アカウント | `platform-tfstate` バケットだけ | platform の CI だけ |
 
 platform の state には全プロジェクトのトークン値が入っている。同じアカウントに置くと、アカウント全体に効く権限（R2 の Admin 権限など）を持つプロジェクトから読めてしまう。アカウントを分ければ、プロジェクトのトークンはメインアカウントにしか効かないので、権限の組み合わせに関係なく state アカウントには届かない（経緯は [decisions](decisions.md)）。
 
-state アカウントは Terraform で管理しない。中身は手動で作った `tfstate-platform` バケットと、それを読み書きする R2 キーだけにする。
+state アカウントは Terraform で管理しない。中身は手動で作った `platform-tfstate` バケットと、それを読み書きする R2 キーだけにする。
 
 ### 分け方の基準
 
@@ -55,8 +55,8 @@ module "kaidoki" {
 | --- | --- |
 | GitHub リポジトリ | `archive_on_destroy = true` と `prevent_destroy` を必ず付ける |
 | ブランチ保護 | main への直接 push 禁止など |
-| R2 バケット `tfstate-<name>` | そのプロジェクトの tfstate 専用 |
-| R2 用トークン | `tfstate-<name>` バケットだけを読み書きできる |
+| R2 バケット `<name>-tfstate` | そのプロジェクトの tfstate 専用 |
+| R2 用トークン | `<name>-tfstate` バケットだけを読み書きできる |
 | Cloudflare API トークン | そのプロジェクトのリソースだけを触れる最小権限 |
 | GitHub Actions Secrets | 上のトークンをプロジェクトのリポジトリに書き込む |
 
@@ -64,8 +64,8 @@ module "kaidoki" {
 
 | バケット | 誰が作るか | 置き場所 |
 | --- | --- | --- |
-| `tfstate-platform` | 手動 | state アカウント |
-| `tfstate-<project>`（各プロジェクトの state） | platform | メインアカウント |
+| `platform-tfstate` | 手動 | state アカウント |
+| `<project>-tfstate`（各プロジェクトの state） | platform | メインアカウント |
 | アプリ用のバケット（アプリのロジックが使うもの） | 各プロジェクト | メインアカウント |
 
 - アプリ用のバケットは、Worker や D1 と同じくプロジェクト側の Terraform で作る。必要なプロジェクトには R2 の Admin 権限を渡す（[decisions](decisions.md#10-r2-バケットの作り分け)）。
@@ -92,10 +92,10 @@ Worker をデプロイできるプロジェクトは、バインディング経�
 
 | バケット | アカウント | 用途 | 作り方 |
 | --- | --- | --- | --- |
-| `tfstate-platform` | state アカウント | platform 自身の state | 手動で作る。Terraform では管理しない |
-| `tfstate-<project>` | メインアカウント | 各プロジェクトの state | platform が作る |
+| `platform-tfstate` | state アカウント | platform 自身の state | 手動で作る。Terraform では管理しない |
+| `<project>-tfstate` | メインアカウント | 各プロジェクトの state | platform が作る |
 
-- platform の state には全プロジェクトのトークン値が平文で入る。そのため `tfstate-platform` は別アカウントに置き、platform の CI 以外から触れないようにする。
+- platform の state には全プロジェクトのトークン値が平文で入る。そのため `platform-tfstate` は別アカウントに置き、platform の CI 以外から触れないようにする。
 - プロジェクトの state をバケットごとに分ける理由: R2 の通常のトークンはバケット単位でしか権限を絞れない。各プロジェクトの CI が、state 用の R2 キーで他のプロジェクトの state を読めないようにする。ただし、R2 の Admin 権限や Worker のバインディング経由では届くので、完全な分離ではない（[decisions](decisions.md#11-プロジェクト同士はバインディングで筒抜けになることを受け入れる)）。
 - ロックは S3 backend の `use_lockfile = true` を使う（R2 の条件付き書き込みで動く。Terraform 1.10 以降）。
 
@@ -104,7 +104,7 @@ platform の backend 設定の例（`<STATE_ACCOUNT_ID>` は state アカウン�
 ```hcl
 terraform {
   backend "s3" {
-    bucket                      = "tfstate-platform"
+    bucket                      = "platform-tfstate"
     key                         = "platform/terraform.tfstate"
     region                      = "auto"
     endpoints                   = { s3 = "https://<STATE_ACCOUNT_ID>.r2.cloudflarestorage.com" }

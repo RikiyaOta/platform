@@ -12,7 +12,7 @@
 - **秘密を `output` に出さない。** どうしても必要な場合は `sensitive = true` を付ける。
 - **platform リポジトリ自身の GitHub 設定（ブランチ保護、Environments）を Terraform で管理しない。**
 - **削除されると困るリソース（GitHub リポジトリ、tfstate 用バケット）には `prevent_destroy` を付ける。** GitHub リポジトリには `archive_on_destroy = true` も付ける。
-- **state アカウントを Terraform で扱わない。** state アカウントには `tfstate-platform` バケットと R2 キーしか置かない。
+- **state アカウントを Terraform で扱わない。** state アカウントには `platform-tfstate` バケットと R2 キーしか置かない。
 - **プロジェクト用の Cloudflare トークンは、メインアカウントのアカウントトークン（`cloudflare_account_token`）として発行する。** ユーザートークンは使わない。
 - **プロジェクト用トークンに、トークンを作れる権限を付けない。** `API Tokens Edit`、`Account API Tokens Edit`、メンバー管理、アカウント設定の編集などは渡さない。
 - **R2 の Admin 権限（`Workers R2 Storage Write`）は、アプリ用の R2 バケットを作るプロジェクトにだけ付ける。** tfstate 用バケットは platform で作り、アプリ用バケットは各プロジェクトで作る（[docs/decisions.md](docs/decisions.md) の決定 10）。

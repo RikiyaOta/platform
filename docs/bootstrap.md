@@ -25,8 +25,8 @@ Terraform を動かすための前提は、Terraform では作れないので最
 
 - [ ] platform の state 専用の Cloudflare アカウントを作る
 - [ ] R2 を有効にする
-- [ ] R2 バケット `tfstate-platform` を作る（Terraform では管理しないので、削除しないよう注意する）
-- [ ] `tfstate-platform` 用の R2 キーを2つ作る
+- [ ] R2 バケット `platform-tfstate` を作る（Terraform では管理しないので、削除しないよう注意する）
+- [ ] `platform-tfstate` 用の R2 キーを2つ作る
   - 読み書き用（apply 用）
   - 読み取り専用（plan 用）
 - [ ] このアカウントには、これ以外のものを置かない
@@ -45,7 +45,7 @@ Terraform を動かすための前提は、Terraform では作れないので最
 
 ## 4. 最初の PR
 
-- [ ] backend 設定（state アカウントの `tfstate-platform`）、provider 設定、plan/apply のワークフローを追加する
+- [ ] backend 設定（state アカウントの `platform-tfstate`）、provider 設定、plan/apply のワークフローを追加する
 - [ ] `/plan` → マージ → apply が通ることを確認する
 
 ここまでできたら、以降の変更はすべて PR 経由で行う。
