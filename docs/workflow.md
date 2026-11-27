@@ -13,17 +13,25 @@
    - ワークフローは次の場合に何もせず終了する:
      - コメントしたのが自分（`author_association == 'OWNER'`）でない
      - PR のブランチがフォークから来ている
-4. **plan ジョブの実行を承認する（PR の承認とは別物）**
-   - plan ジョブは Environment `platform-plan` を使う。この Environment には required reviewers（自分）を設定しているので、ジョブは「承認待ち」で止まる。
-   - Actions の画面（または PR に出る通知）で「Review deployments」→「Approve and deploy」を押すと、Secrets がジョブに渡されて plan が動く。
-   - `/plan` のコメント者チェックをすり抜けられても、ここで自分が承認しない限り鍵は渡らない。最後の防壁として置いている。
-5. **plan の結果を確認する**
+   - plan ジョブは Environment `platform-plan` の Secrets を使う。plan には実行前の承認ステップを設けていないので、コメントするとすぐに動く（理由は [plan に承認ステップを設けない理由](#plan-に承認ステップを設けない理由)）。
+4. **plan の結果を確認する**
    - 結果は PR にコメントされる。`destroy` や `replace` が出ていたら、必ず理由を確認する。
-6. **自分が承認してマージする**
+5. **自分が承認してマージする**
    - main は保護されていて、マージには自分の承認が必要。AI は自分で作った PR を承認できない。
-7. **main への push で apply**
-   - Environment `platform-apply` の承認後に実行する。
+6. **main への push で apply**
+   - apply ジョブは Environment `platform-apply` を使う。この Environment には required reviewers（自分）を設定しているので、ジョブは「承認待ち」で止まる。
+   - Actions の画面で「Review deployments」→「Approve and deploy」を押すと、Secrets がジョブに渡されて apply が動く。PR の承認とは別物。
    - apply は改めて plan してから実行するので、マージ後に `/plan` 時点と差分が出ていないか確認する。
+
+## plan に承認ステップを設けない理由
+
+毎回のクリックを減らすため、plan では Environment の承認を省いている。それでも鍵は次の仕組みで守られる。
+
+- `/plan` は自分（OWNER）のコメントでしか動かず、フォークの PR は plan しない。
+- `platform-plan` の Secrets は main で動くワークフローにしか渡らない（PR でワークフローを書き換えても取り出せない）。
+- plan 用の鍵は読み取り専用なので、トークンの発行やリソースの削除はできない。
+
+ただし、plan でも `platform-tfstate` は読める（＝プロジェクト用トークンは見える）。そのため、`/plan` の前の差分確認は省略しない。
 
 ## plan 前に確認すること
 
@@ -38,7 +46,7 @@ plan は PR のコードをある程度実行する（外部コマンドを実�
 
 | Environment | required reviewers | 使えるブランチ |
 | --- | --- | --- |
-| `platform-plan` | 自分 | main のみ（`issue_comment` は main で動くので問題ない） |
+| `platform-plan` | なし | main のみ（`issue_comment` は main で動くので問題ない） |
 | `platform-apply` | 自分 | main のみ |
 
 この設定は platform 自身では管理せず、手動で行う。

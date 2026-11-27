@@ -38,7 +38,10 @@ Terraform を動かすための前提は、Terraform では作れないので最
 
 ## 3. GitHub Environments
 
-- [ ] Environment `platform-plan` と `platform-apply` を作る
+- [ ] Environment `platform-plan` を作る
+  - required reviewers: なし
+  - 使えるブランチ: main のみ
+- [ ] Environment `platform-apply` を作る
   - required reviewers: 自分
   - 使えるブランチ: main のみ
 - [ ] それぞれに Secrets を登録する（一覧は [secrets](secrets.md) を参照）

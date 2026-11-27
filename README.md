@@ -22,7 +22,7 @@
 ```
 AI がコードを書いて PR を作成
   → 自分が差分を確認して `/plan` とコメント
-  → Environment の承認 → plan 結果が PR にコメントされる
+  → plan 結果が PR にコメントされる
   → 自分が承認してマージ
   → main への push で apply（Environment の承認後に実行）
 ```
