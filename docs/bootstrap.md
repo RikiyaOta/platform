@@ -9,8 +9,14 @@ Terraform を動かすための前提は、Terraform では作れないので最
 - [ ] main のブランチ保護（ruleset）を設定する
   - 直接 push を禁止し、PR を必須にする
   - マージには1件以上の承認を必須にする
-- [ ] AI 用の GitHub App を作り、このリポジトリにインストールする
-  - 権限: Contents（write）、Pull requests（write）のみ
+- [ ] AI 用の GitHub App を自作する（Settings → Developer settings → GitHub Apps → New GitHub App）
+  - Webhook: 無効にする
+  - Repository permissions: Contents（Read and write）、Pull requests（Read and write）のみ。Metadata（Read-only）は自動で付く
+  - Administration、Workflows、Environments、Secrets、Actions は付けない
+  - インストール先: Only on this account
+- [ ] 自作 App の秘密鍵（`.pem`）を生成して Bitwarden に保存し、このリポジトリにインストールする
+- [ ] Docker Sandboxes の GitHub 認証に、自作 App のトークンを発行するコマンドを登録する（本人のトークン（`gh auth token`）は登録しない）
+- [ ] 公式の Claude GitHub App のアクセス対象から、このリポジトリを外す（[workflow](workflow.md#ai-の動かし方)）
 - [ ] fine-grained PAT を2つ作る
   - `GH_ADMIN_TOKEN`: リポジトリの作成・管理、Secrets・Environments の書き込み
   - `GH_READ_TOKEN`: 読み取りのみ

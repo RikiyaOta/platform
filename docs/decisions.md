@@ -79,3 +79,13 @@
   - 各プロジェクトの plan を確認するときに、バインディング先が自分のリソースになっているかを見る。
   - 強い秘密（API トークン、Access のサービストークン、Worker 用のシークレット、生成したパスワードなど）はプロジェクト側の state に置かず、platform で作って渡す。
   - トークンを作れる権限（`API Tokens Edit`、`Account API Tokens Edit` など）は、プロジェクトに渡さない。これを持つと、自分で強いトークンを作れてしまう。
+
+## 12. AI は自作の GitHub App で動かし、web 版の Claude Code は platform で使わない
+
+- **決定**: platform の作業をする AI は、Docker Sandboxes の中で、自作の GitHub App のトークンだけを渡して動かす。公式の Claude GitHub App は platform リポジトリにインストールしない。
+- **理由**:
+  - `/plan` の関門とマージの承認は、AI が自分とは別のアカウントで動くことを前提にしている（[4](#4-platform-も-github-actions-で-apply-する)）。
+  - ターミナルの Claude Code は、手元の `gh` や git の認証を使うので本人名義になる。
+  - web 版の Claude Code や claude.ai のチャットは、公式の Claude GitHub App を経由しても本人名義で push や PR 作成を行う。このリポジトリの記録でも、push、PR 作成、コメントの actor はすべて本人だった。
+  - 公式 App の権限は自分では選べない。自作 App なら、Contents と Pull requests だけに絞れる。Workflows を付けなければ、AI は `.github/workflows` も変更できない。
+- **補足**: GitHub Actions 上で動かす Claude（`@claude`）は公式 App の bot として動くが、AI が platform の Actions 上で動くことになるので、採用していない。
