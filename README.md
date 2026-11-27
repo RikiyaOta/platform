@@ -8,12 +8,12 @@
 
 | 区分 | リソース |
 | --- | --- |
-| プロジェクトの土台 | GitHub リポジトリ、ブランチ保護、tfstate 用 R2 バケット、アプリ用 R2 バケット（R2 バケットはすべて platform で作る）、バケット専用の R2 キー、プロジェクト用 Cloudflare API トークン、それらを渡す GitHub Actions Secrets |
+| プロジェクトの土台 | GitHub リポジトリ、ブランチ保護、tfstate 用 R2 バケット、そのバケット専用の R2 キー、プロジェクト用 Cloudflare API トークン、それらを渡す GitHub Actions Secrets |
 | アカウント共有 | ゾーン、Cloudflare Access のログイン方法（IdP）、使い回す Access ポリシー |
 
 ## 管理しないもの
 
-- 各プロジェクトのアプリ固有リソース（Worker、D1、KV、Access アプリケーションなど）→ 各プロジェクトのリポジトリで管理
+- 各プロジェクトのアプリ固有リソース（Worker、D1、KV、アプリ用の R2 バケット、Access アプリケーションなど）→ 各プロジェクトのリポジトリで管理
 - この platform リポジトリ自身の GitHub 設定（ブランチ保護、Environments）→ 手動で設定する（理由は [decisions](docs/decisions.md)）
 - platform の state を置く Cloudflare アカウント（state アカウント）→ 手動で管理する。中身は `tfstate-platform` バケットと R2 キーだけ（[architecture](docs/architecture.md)）
 

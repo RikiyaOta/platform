@@ -43,9 +43,8 @@ Cloudflare Access は、ログイン方法（IdP）、チームドメイン、�
 
 ```hcl
 module "kaidoki" {
-  source     = "./modules/project"
-  name       = "kaidoki"
-  r2_buckets = ["images"] # アプリが使う R2 バケット
+  source = "./modules/project"
+  name   = "kaidoki"
   # 必要な Cloudflare 権限など
 }
 ```
@@ -58,19 +57,19 @@ module "kaidoki" {
 | ブランチ保護 | main への直接 push 禁止など |
 | R2 バケット `tfstate-<name>` | そのプロジェクトの tfstate 専用 |
 | R2 用トークン | `tfstate-<name>` バケットだけを読み書きできる |
-| アプリ用の R2 バケット | `r2_buckets` で指定したもの。CORS、ライフサイクル、カスタムドメインなどの設定も platform で管理する |
-| アプリ用バケットの R2 キー | Worker 以外（S3 API）から使う場合だけ、そのバケット専用の読み書きキーを発行する |
 | Cloudflare API トークン | そのプロジェクトのリソースだけを触れる最小権限 |
 | GitHub Actions Secrets | 上のトークンをプロジェクトのリポジトリに書き込む |
 
-### R2 バケットはすべて platform で作る
+### R2 バケットの作り分け
 
-バケットを作るには R2 の Admin 権限（`Workers R2 Storage Write`）が必要で、これはアカウント内の全バケットの中身にも効く。プロジェクトにこの権限を渡すと、他のプロジェクトの state やデータが読めてしまう。そのため、tfstate 用もアプリ用も、R2 バケットはすべて platform で作る（[decisions](decisions.md#10-r2-バケットはすべて-platform-で作る)）。
+| バケット | 誰が作るか | 置き場所 |
+| --- | --- | --- |
+| `tfstate-platform` | 手動 | state アカウント |
+| `tfstate-<project>`（各プロジェクトの state） | platform | メインアカウント |
+| アプリ用のバケット（アプリのロジックが使うもの） | 各プロジェクト | メインアカウント |
 
-- プロジェクト側は、Worker のバインディングにバケット名を書いて使う。実行時に R2 のトークンは要らない。
-- Worker 以外から使う場合は、platform が発行したバケット専用のキーを使う。
-- バケットを追加・変更したいときは、platform に PR を出す（モジュールの `r2_buckets` を変えるだけ）。
-- Worker のバインディングは、自分のプロジェクトのリソースだけに向ける。権限上は他のプロジェクトのバケットにも向けられてしまうので、ルールと plan の確認で守る。
+- アプリ用のバケットは、Worker や D1 と同じくプロジェクト側の Terraform で作る。必要なプロジェクトには R2 の Admin 権限を渡す（[decisions](decisions.md#10-r2-バケットの作り分け)）。
+- R2 の Admin 権限やバインディングを使えば、他のプロジェクトのバケットにも届いてしまう。これは受け入れたうえで、Worker のバインディングは自分のプロジェクトのリソースだけに向けるルールと、plan の確認で守る（[decisions](decisions.md#11-プロジェクト同士はバインディングで筒抜けになることを受け入れる)）。
 
 R2 の S3 認証情報は Cloudflare API トークンから作れる。Access Key ID がトークンの ID、Secret Access Key がトークン値の SHA-256 ハッシュになる。そのため、Terraform の `sha256()` で変換して Secrets に書き込む。
 
@@ -78,7 +77,7 @@ R2 の S3 認証情報は Cloudflare API トークンから作れる。Access Ke
 
 - **メインアカウントのアカウントトークン（`cloudflare_account_token`）として発行する。** ユーザートークンは設定次第で複数のアカウントにまたがるので使わない。
 - **トークンを作れる権限は渡さない。** `API Tokens Edit`（User）、`Account API Tokens Edit`、メンバー管理、アカウント設定の編集権限など、権限を広げられるものはプロジェクトに渡さない。
-- **R2 の Admin 権限（`Workers R2 Storage Write` / `Read`）は渡さない。** バケットは platform で作るので、プロジェクトには要らない。
+- **R2 の Admin 権限（`Workers R2 Storage Write`）は、アプリ用のバケットを作るプロジェクトにだけ渡す。** アカウント内の全バケットに効くので、必要のないプロジェクトには渡さない。
 
 ### プロジェクト側の state に強い秘密を置かない
 
@@ -97,7 +96,7 @@ Worker をデプロイできるプロジェクトは、バインディング経�
 | `tfstate-<project>` | メインアカウント | 各プロジェクトの state | platform が作る |
 
 - platform の state には全プロジェクトのトークン値が平文で入る。そのため `tfstate-platform` は別アカウントに置き、platform の CI 以外から触れないようにする。
-- プロジェクトの state をバケットごとに分ける理由: R2 の通常のトークンはバケット単位でしか権限を絞れない。各プロジェクトの CI が、state 用の R2 キーで他のプロジェクトの state を読めないようにする。ただし、Worker のバインディング経由では届くので、完全な分離ではない（[decisions](decisions.md#11-プロジェクト同士はバインディングで筒抜けになることを受け入れる)）。
+- プロジェクトの state をバケットごとに分ける理由: R2 の通常のトークンはバケット単位でしか権限を絞れない。各プロジェクトの CI が、state 用の R2 キーで他のプロジェクトの state を読めないようにする。ただし、R2 の Admin 権限や Worker のバインディング経由では届くので、完全な分離ではない（[decisions](decisions.md#11-プロジェクト同士はバインディングで筒抜けになることを受け入れる)）。
 - ロックは S3 backend の `use_lockfile = true` を使う（R2 の条件付き書き込みで動く。Terraform 1.10 以降）。
 
 platform の backend 設定の例（`<STATE_ACCOUNT_ID>` は state アカウントの ID）:
