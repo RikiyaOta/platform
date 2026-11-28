@@ -26,8 +26,9 @@ Terraform を動かすための前提は、Terraform では作れないので最
 - [ ] fine-grained PAT を2つ作る
   - `GH_ADMIN_TOKEN`: リポジトリの作成・管理、Secrets・Variables の書き込み
     - Repository access: All repositories（新しいリポジトリを作るため）
-    - Repository permissions: Administration（Read and write）、Secrets（Read and write）、Variables（Read and write）、Contents（Read and write）、Metadata（Read-only）
+    - Repository permissions: Administration（Read and write）、Secrets（Read and write）、Variables（Read and write）、Metadata（Read-only）
     - Environments は付けない（プロジェクト用トークンは Environment ではなく Actions Secrets に書くため）
+    - Contents は付けない（各プロジェクトにファイルを配るようになったら追加する）
   - `GH_READ_TOKEN`: 読み取りのみ
 
 ## 2. Cloudflare
