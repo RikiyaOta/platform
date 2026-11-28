@@ -58,7 +58,7 @@ Terraform を動かすための前提は、Terraform では作れないので最
   - required reviewers: なし
   - 使えるブランチ: main のみ
 - [ ] Environment `platform-apply` を作る
-  - required reviewers: 自分
+  - required reviewers: なし（理由は [workflow](workflow.md#apply-に承認ステップを設けない理由)）
   - 使えるブランチ: main のみ
 - [ ] それぞれに Secrets を登録する（一覧は [secrets](secrets.md) を参照）
 - [ ] リポジトリの Variables に、Cloudflare のアカウント ID を登録する（[secrets](secrets.md#リポジトリの-variables)）
