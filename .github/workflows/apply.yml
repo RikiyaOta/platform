@@ -31,9 +31,9 @@ jobs:
         with:
           persist-credentials: false
 
-      # mise.toml と mise.lock に従ってツールを入れる（mise.lock があれば --locked が付く）
       - uses: jdx/mise-action@v5.3.0
         with:
+          # キャッシュは使わない（PR のコードが動くジョブと apply でキャッシュを共有しないため）
           cache: false
 
       - name: Terraform のファイルがあるか調べる
