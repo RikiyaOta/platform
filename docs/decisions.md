@@ -87,5 +87,21 @@
   - `/plan` の関門とマージの承認は、AI が自分とは別のアカウントで動くことを前提にしている（[4](#4-platform-も-github-actions-で-apply-する)）。
   - ターミナルの Claude Code は、手元の `gh` や git の認証を使うので本人名義になる。
   - web 版の Claude Code や claude.ai のチャットは、公式の Claude GitHub App を経由しても本人名義で push や PR 作成を行う。このリポジトリの記録でも、push、PR 作成、コメントの actor はすべて本人だった。
-  - 公式 App の権限は自分では選べない。自作 App なら、Contents と Pull requests だけに絞れる。Workflows を付けなければ、AI は `.github/workflows` も変更できない。
+  - 公式 App の権限は自分では選べない。自作 App なら、必要なものだけに絞れる。Workflows を付けなければ、AI は `.github/workflows` も変更できない。
+- **自作 App の権限**:
+  - 付ける: Contents（Read and write）、Pull requests（Read and write）、Issues（Read and write）、Checks（Read-only）、Actions（Read-only）、Metadata（Read-only）
+  - 付けない: Administration、Workflows、Environments、Secrets
+  - Issues は Issue の作成やコメントのため、Checks と Actions は CI の結果やログを読むため。どれも読み取りかコメントまでで、ブランチ保護・ワークフロー・鍵には届かない。
+  - Issues の書き込みがあると AI も PR にコメントできるが、`/plan` はオーナーのコメントでしか動かない（[workflow](workflow.md)）ので、AI が自分で plan を動かすことはできない。
+- **他のプロジェクトでも使う**: この App は platform 以外のプロジェクトでも使う。AI の sandbox に本人のトークンを渡さないため。
 - **補足**: GitHub Actions 上で動かす Claude（`@claude`）は公式 App の bot として動くが、AI が platform の Actions 上で動くことになるので、採用していない。
+
+## 今後の検討
+
+まだ決めていないが、今後置き換えたいもの。
+
+- **GitHub の PAT を短期トークンにする**: `GH_ADMIN_TOKEN` と `GH_READ_TOKEN` を、CI 専用の GitHub App と `actions/create-github-app-token` で発行する短期トークンに置き換える。PAT のように長く有効な鍵を Environment Secrets に置かずに済む。
+- **Cloudflare のトークンを OIDC で払い出す**: Cloudflare のトークンを、GitHub Actions の OIDC トークンと引き換えに短期トークンを払い出す方式に移行する。
+  - Cloudflare が公式の仕組みを出したら、それを使う。
+  - 出なければ、GitHub の OIDC トークンを検証して Cloudflare のトークンを発行する Worker を自作することを検討する。
+- **それまでの運用**: 手動で作る Cloudflare のトークンには有効期限を付け、定期的に作り直す（[secrets](secrets.md#ローテーション)）。
