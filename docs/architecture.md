@@ -50,11 +50,35 @@ Cloudflare Access は、ログイン方法（IdP）、チームドメイン、�
 
 ```hcl
 module "example_app" {
-  source = "./modules/project"
-  name   = "example-app"
-  # 必要な Cloudflare 権限など
+  source                = "./modules/project"
+  name                  = "example-app"
+  cloudflare_account_id = var.cloudflare_account_id
+
+  # リポジトリを管理する（null なら tfstate 用バケットだけを作る）
+  github_repository = {
+    description = "..."
+  }
+
+  # プロジェクトの CI 用トークンの権限（権限グループの名前で書く。null ならトークンを作らない）
+  cloudflare_token_permissions = {
+    account = ["Workers Scripts Write"]
+    zones   = { "example.com" = ["Zone Read", "DNS Write"] }
+  }
+  token_expires_on = "2027-12-01T00:00:00Z"
 }
 ```
+
+- `github_repository` を書いたときだけ、リポジトリ・ブランチ保護・tfstate 用の R2 キー・Secrets を作る。既存のプロジェクト（rss-news-site）のように tfstate 用バケットだけを platform に置くこともできる。
+- 鍵は、リポジトリ全体の Actions Secrets ではなく、Environment（既定の名前は `production`）に書き込む。Environment は main ブランチのワークフローからしか使えないようにするので、PR のブランチや AI が push したブランチのワークフローからは鍵を読めない。
+- Environment に書き込む Secrets と Variables:
+
+  | 種類 | 名前 | 中身 |
+  | --- | --- | --- |
+  | Secret | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | `<name>-tfstate` だけを読み書きできる R2 キー |
+  | Secret | `CLOUDFLARE_API_TOKEN` | `cloudflare_token_permissions` の権限を持つトークン |
+  | Variable | `CLOUDFLARE_ACCOUNT_ID` | メインアカウントのアカウント ID |
+
+- トークンを作れる権限などを `cloudflare_token_permissions` に書くと、plan がエラーになる（`modules/project/tokens.tf` の precondition）。
 
 このモジュールが作るもの:
 
@@ -65,7 +89,7 @@ module "example_app" {
 | R2 バケット `<name>-tfstate` | そのプロジェクトの tfstate 専用 |
 | R2 用トークン | `<name>-tfstate` バケットだけを読み書きできる |
 | Cloudflare API トークン | そのプロジェクトのリソースだけを触れる最小権限 |
-| GitHub Actions Secrets | 上のトークンをプロジェクトのリポジトリに書き込む |
+| GitHub Environment と Secrets | main ブランチ限定の Environment を作り、上のトークンを書き込む |
 
 ### R2 バケットの作り分け
 
