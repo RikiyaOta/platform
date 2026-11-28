@@ -11,14 +11,24 @@ Terraform を動かすための前提は、Terraform では作れないので最
   - マージには1件以上の承認を必須にする
 - [ ] AI 用の GitHub App を自作する（Settings → Developer settings → GitHub Apps → New GitHub App）
   - Webhook: 無効にする
-  - Repository permissions: Contents（Read and write）、Pull requests（Read and write）のみ。Metadata（Read-only）は自動で付く
-  - Administration、Workflows、Environments、Secrets、Actions は付けない
+  - Repository permissions: 次のものだけを付ける。Metadata（Read-only）は自動で付く
+    - Contents（Read and write）
+    - Pull requests（Read and write）
+    - Issues（Read and write）
+    - Checks（Read-only）
+    - Actions（Read-only）
+  - Administration、Workflows、Environments、Secrets は付けない
   - インストール先: Only on this account
 - [ ] 自作 App の秘密鍵（`.pem`）を生成して Bitwarden に保存し、このリポジトリにインストールする
+  - この App は platform 以外のプロジェクトでも使う（AI の sandbox に本人のトークンを渡さないため）。AI に作業させるリポジトリにも同じ App をインストールする
 - [ ] Docker Sandboxes の GitHub 認証に、自作 App のトークンを発行するコマンドを登録する（本人のトークン（`gh auth token`）は登録しない）
 - [ ] 公式の Claude GitHub App のアクセス対象から、このリポジトリを外す（[workflow](workflow.md#ai-の動かし方)）
 - [ ] fine-grained PAT を2つ作る
-  - `GH_ADMIN_TOKEN`: リポジトリの作成・管理、Secrets・Environments の書き込み
+  - `GH_ADMIN_TOKEN`: リポジトリの作成・管理、Secrets・Variables の書き込み
+    - Repository access: All repositories（新しいリポジトリを作るため）
+    - Repository permissions: Administration（Read and write）、Secrets（Read and write）、Variables（Read and write）、Metadata（Read-only）
+    - Environments は付けない（プロジェクト用トークンは Environment ではなく Actions Secrets に書くため）
+    - Contents は付けない（各プロジェクトにファイルを配るようになったら追加する）
   - `GH_READ_TOKEN`: 読み取りのみ
 
 ## 2. Cloudflare

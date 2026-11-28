@@ -22,7 +22,7 @@ Terraform で発行したトークンの値は tfstate に平文で入る。こ�
 | --- | --- | --- |
 | `CLOUDFLARE_API_TOKEN` | ブートストラップ用 Cloudflare トークン（メインアカウントのみ） | API トークンの編集（トークン発行用）、R2 の編集、ゾーン・DNS の編集、Access の編集など、platform で扱うもの全部 |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | `platform-tfstate` 用の R2 キー（platform アカウント） | `platform-tfstate` の読み書き |
-| `GH_ADMIN_TOKEN` | GitHub の fine-grained PAT | リポジトリの作成・管理（Administration: write）、Secrets・Environments の書き込み |
+| `GH_ADMIN_TOKEN` | GitHub の fine-grained PAT（Repository access: All repositories） | Administration（Read and write）、Secrets（Read and write）、Variables（Read and write）、Metadata（Read-only）。Environments と Contents は付けない |
 
 ### Environment `platform-plan`（plan 用。読み取り専用）
 
@@ -31,6 +31,12 @@ Terraform で発行したトークンの値は tfstate に平文で入る。こ�
 | `CLOUDFLARE_API_TOKEN` | 読み取り専用 Cloudflare トークン（メインアカウントのみ） | platform で扱うものの読み取りのみ |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | `platform-tfstate` 用の R2 キー（platform アカウント） | `platform-tfstate` の読み取りのみ（plan は `-lock=false` で実行する） |
 | `GH_READ_TOKEN` | GitHub の fine-grained PAT | 管理対象リポジトリの読み取りのみ |
+
+`GH_ADMIN_TOKEN` の補足:
+
+- Repository access を All repositories にするのは、新しいリポジトリを作るため。
+- Environments の権限は付けない。プロジェクト用トークンは、プロジェクトのリポジトリの Environment ではなく Actions Secrets に書き込むため。
+- Contents の権限は付けない。各プロジェクトにファイルを配るようになったら追加する。
 
 plan 用を読み取り専用に分けておけば、万一 PR のコードが悪さをしても、トークンの新規発行やリソースの削除まではできない。ただし state は読めてしまう（＝プロジェクト用トークンは見える）ので、plan 前の差分確認は省略しない。
 
