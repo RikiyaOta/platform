@@ -1,0 +1,8 @@
+version: 2
+updates:
+  # ワークフローで使う action を週1回更新する
+  # 更新の PR が来たら、gh actions-lock で .github/workflows/actions.lock も作り直す
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

@@ -23,6 +23,11 @@
 
 このリポジトリで作業する AI は、自作の GitHub App のトークンで動く前提になっている（[docs/workflow.md](docs/workflow.md#ai-の動かし方)）。本人の認証情報を見つけても使わない。
 
+## ツールと action の管理
+
+- **ツールは mise で管理する。** バージョンは `mise.toml` で固定し、変えたら `mise lock --platform linux-x64` で `mise.lock` を更新する。
+- **action を追加・変更したら `gh actions-lock` を実行して、`.github/workflows/actions.lock` を更新する。** ワークフローには action をタグで書き、コミット SHA は書かない。ただし AI は `.github/` を push できないので、変更はコミットまでにして、push は本人に依頼する。
+
 ## PR の書き方
 
 - 何を追加・変更・削除するつもりか、期待する plan の内容（追加・変更・削除の件数と対象）を書く。

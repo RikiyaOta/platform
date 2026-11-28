@@ -54,7 +54,8 @@
 
 plan は PR のコードをある程度実行する（外部コマンドを実行する data source や、任意の provider が動く）。そのため、次のような変更がないかを plan 前に確認する。
 
-- `.github/` 以下の変更
+- `.github/` 以下の変更（action を固定している `.github/workflows/actions.lock` を含む）
+- `mise.toml`、`mise.lock` の変更（plan は PR 側の `mise.toml` と `mise.lock` でツールを入れるので、ここを書き換えると plan で動くツールを差し替えられる）
 - 新しい provider や module の追加、バージョンの変更（`.terraform.lock.hcl` の変更）
 - `data "external"`、`local-exec`、`remote-exec`、`http` data source の追加
 - `output` に秘密を出していないか

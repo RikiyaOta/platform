@@ -61,10 +61,11 @@ Terraform を動かすための前提は、Terraform では作れないので最
   - required reviewers: 自分
   - 使えるブランチ: main のみ
 - [ ] それぞれに Secrets を登録する（一覧は [secrets](secrets.md) を参照）
+- [ ] リポジトリの Variables に、Cloudflare のアカウント ID を登録する（[secrets](secrets.md#リポジトリの-variables)）
 
 ## 4. 最初の PR
 
-- [ ] backend 設定（platform アカウントの `platform-tfstate`）、provider 設定、plan/apply のワークフローを追加する
+- [ ] backend 設定（platform アカウントの `platform-tfstate`）、provider 設定を追加する。plan/apply のワークフローは追加済み（Terraform のファイルがない間は何もせず終了する）
 - [ ] `/plan` → マージ → apply が通ることを確認する
 
 ここまでできたら、以降の変更はすべて PR 経由で行う。
