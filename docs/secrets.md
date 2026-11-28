@@ -40,6 +40,15 @@ Terraform で発行したトークンの値は tfstate に平文で入る。こ�
 
 plan 用を読み取り専用に分けておけば、万一 PR のコードが悪さをしても、トークンの新規発行やリソースの削除まではできない。ただし state は読めてしまう（＝プロジェクト用トークンは見える）ので、plan 前の差分確認は省略しない。
 
+### リポジトリの Variables
+
+秘密ではないが、コードに直接書かない値。両方のワークフローで使う。
+
+| Variable 名 | 中身 | ワークフローでの使い方 |
+| --- | --- | --- |
+| `CLOUDFLARE_ACCOUNT_ID` | メインアカウントのアカウント ID | `TF_VAR_cloudflare_account_id` として Terraform に渡す |
+| `PLATFORM_ACCOUNT_ID` | platform アカウントのアカウント ID | `AWS_ENDPOINT_URL_S3=https://<ID>.r2.cloudflarestorage.com` として backend の接続先に使う |
+
 ### 個人情報を含む変数
 
 Access ポリシーで許可するメールアドレスなどは、コードに書かずに両方の Environment の Secret から渡す。

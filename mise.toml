@@ -1,0 +1,8 @@
+[tools]
+terraform = "1.17.2"
+
+[settings]
+# mise.lock にバージョンとチェックサムを記録する。CI（linux-x64）と手元（linux-x64）で同じものを入れる
+lockfile = true
+# mise.lock に記録された URL とチェックサムでしか入れない
+locked = true

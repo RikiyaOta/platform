@@ -1,0 +1,188 @@
+# PR に `/plan` とコメントすると、PR の head のコミットで terraform plan を実行し、結果を PR にコメントする。
+# issue_comment トリガーは main にあるこのファイルを実行するので、PR でこのファイルを書き換えても影響しない。
+# 流れと守り方は docs/workflow.md を参照。
+name: plan
+
+on:
+  issue_comment:
+    types: [created]
+
+# ジョブごとに必要な権限だけを付ける
+permissions: {}
+
+concurrency:
+  group: plan-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  # PR の情報を確かめる。鍵（Environment）は使わない
+  check:
+    if: >-
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/plan') &&
+      github.event.comment.author_association == 'OWNER'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      same_repo: ${{ steps.pr.outputs.same_repo }}
+      head_sha: ${{ steps.pr.outputs.head_sha }}
+    steps:
+      - name: PR の head を調べる
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          pr="$(gh api "repos/${REPO}/pulls/${PR_NUMBER}")"
+          head_repo="$(jq -r '.head.repo.full_name // ""' <<<"${pr}")"
+          head_sha="$(jq -r '.head.sha' <<<"${pr}")"
+          if [ "${head_repo}" = "${REPO}" ]; then
+            echo "same_repo=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "same_repo=false" >> "${GITHUB_OUTPUT}"
+            echo "::notice::PR のブランチがこのリポジトリのものではない（フォーク）ので plan しない"
+          fi
+          echo "head_sha=${head_sha}" >> "${GITHUB_OUTPUT}"
+
+  # PR のコードで plan する。PR のコードが動くので、このジョブには PR に書き込める権限を渡さない
+  plan:
+    needs: check
+    if: needs.check.outputs.same_repo == 'true'
+    runs-on: ubuntu-latest
+    environment: platform-plan
+    permissions:
+      contents: read
+    outputs:
+      status: ${{ steps.result.outputs.status }}
+      plan: ${{ steps.result.outputs.plan }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ needs.check.outputs.head_sha }}
+          persist-credentials: false
+
+      # PR の mise.toml と mise.lock に従ってツールを入れる（mise.lock があれば --locked が付く）
+      # キャッシュは使わない（PR のコードが動くジョブと apply でキャッシュを共有しないため）
+      - uses: jdx/mise-action@v5.3.0
+        with:
+          version: 2026.11.14
+          cache: false
+
+      - name: Terraform のファイルがあるか調べる
+        id: files
+        run: |
+          if compgen -G "*.tf" > /dev/null; then
+            echo "has_tf=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "has_tf=false" >> "${GITHUB_OUTPUT}"
+            echo "::notice::Terraform のファイルがないので plan をスキップする"
+          fi
+
+      - name: terraform init
+        if: steps.files.outputs.has_tf == 'true'
+        env:
+          TF_IN_AUTOMATION: "1"
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL_S3: https://${{ vars.PLATFORM_ACCOUNT_ID }}.r2.cloudflarestorage.com
+        run: terraform init -input=false -no-color
+
+      - name: terraform plan
+        id: plan
+        if: steps.files.outputs.has_tf == 'true'
+        env:
+          TF_IN_AUTOMATION: "1"
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL_S3: https://${{ vars.PLATFORM_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_READ_TOKEN }}
+          TF_VAR_cloudflare_account_id: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          TF_VAR_access_allowed_emails: ${{ secrets.TF_VAR_access_allowed_emails }}
+        run: |
+          set +e
+          terraform plan -lock=false -input=false -no-color 2>&1 | tee "${RUNNER_TEMP}/plan.txt"
+          code="${PIPESTATUS[0]}"
+          echo "code=${code}" >> "${GITHUB_OUTPUT}"
+          exit 0
+
+      # コメント用の結果をまとめる。コメントの上限（65536 文字）に収まるよう、末尾だけを残す
+      - name: 結果をまとめる
+        id: result
+        if: always()
+        env:
+          HAS_TF: ${{ steps.files.outputs.has_tf }}
+          PLAN_CODE: ${{ steps.plan.outputs.code }}
+        run: |
+          if [ "${HAS_TF}" = "false" ]; then
+            status="skipped"
+          elif [ "${PLAN_CODE}" = "0" ]; then
+            status="success"
+          else
+            status="failure"
+          fi
+          echo "status=${status}" >> "${GITHUB_OUTPUT}"
+
+          plan_file="${RUNNER_TEMP}/plan.txt"
+          if [ -f "${plan_file}" ]; then
+            delimiter="EOF_$(openssl rand -hex 16)"
+            {
+              echo "plan<<${delimiter}"
+              if [ "$(wc -c < "${plan_file}")" -gt 60000 ]; then
+                echo "（長いので末尾だけを表示する。全体は Actions のログを見る）"
+                tail -c 60000 "${plan_file}"
+              else
+                cat "${plan_file}"
+              fi
+              echo
+              echo "${delimiter}"
+            } >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: plan が失敗したらジョブを失敗にする
+        if: steps.plan.outputs.code != '' && steps.plan.outputs.code != '0'
+        run: exit 1
+
+  # 結果を PR にコメントする。PR のコードは動かさない
+  comment:
+    needs: [check, plan]
+    if: always() && needs.check.outputs.same_repo == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: PR にコメントする
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          HEAD_SHA: ${{ needs.check.outputs.head_sha }}
+          STATUS: ${{ needs.plan.outputs.status }}
+          PLAN: ${{ needs.plan.outputs.plan }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          case "${STATUS}" in
+            success) title="✅ plan が成功した" ;;
+            skipped) title="⏭️ Terraform のファイルがないので plan をスキップした" ;;
+            *)       title="❌ plan が失敗した" ;;
+          esac
+          body="${RUNNER_TEMP}/comment.md"
+          {
+            echo "### ${title}"
+            echo
+            echo "- 対象のコミット: ${HEAD_SHA}"
+            echo "- ログ: ${RUN_URL}"
+            if [ -n "${PLAN}" ]; then
+              echo
+              echo "<details><summary>plan の出力</summary>"
+              echo
+              echo '```text'
+              printf '%s\n' "${PLAN}"
+              echo '```'
+              echo
+              echo "</details>"
+            fi
+          } > "${body}"
+          gh pr comment "${PR_NUMBER}" --repo "${REPO}" --body-file "${body}"

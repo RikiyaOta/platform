@@ -1,0 +1,70 @@
+# main への push で terraform apply を実行する。
+# Environment `platform-apply` には required reviewers を設定しているので、承認するまでジョブは動かない。
+# 流れは docs/workflow.md を参照。
+name: apply
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**.tf"
+      - .terraform.lock.hcl
+      - "**/.terraform.lock.hcl"
+      - mise.toml
+      - mise.lock
+
+permissions: {}
+
+# apply は同時に1つだけ動かし、途中で止めない
+concurrency:
+  group: apply
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    environment: platform-apply
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      # mise.toml と mise.lock に従ってツールを入れる（mise.lock があれば --locked が付く）
+      - uses: jdx/mise-action@v5.3.0
+        with:
+          version: 2026.11.14
+          cache: false
+
+      - name: Terraform のファイルがあるか調べる
+        id: files
+        run: |
+          if compgen -G "*.tf" > /dev/null; then
+            echo "has_tf=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "has_tf=false" >> "${GITHUB_OUTPUT}"
+            echo "::notice::Terraform のファイルがないので apply をスキップする"
+          fi
+
+      - name: terraform init
+        if: steps.files.outputs.has_tf == 'true'
+        env:
+          TF_IN_AUTOMATION: "1"
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL_S3: https://${{ vars.PLATFORM_ACCOUNT_ID }}.r2.cloudflarestorage.com
+        run: terraform init -input=false -no-color
+
+      - name: terraform apply
+        if: steps.files.outputs.has_tf == 'true'
+        env:
+          TF_IN_AUTOMATION: "1"
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL_S3: https://${{ vars.PLATFORM_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_ADMIN_TOKEN }}
+          TF_VAR_cloudflare_account_id: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          TF_VAR_access_allowed_emails: ${{ secrets.TF_VAR_access_allowed_emails }}
+        run: terraform apply -auto-approve -input=false -no-color
