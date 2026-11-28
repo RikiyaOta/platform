@@ -24,12 +24,13 @@ Terraform を動かすための前提は、Terraform では作れないので最
 - [ ] Docker Sandboxes の GitHub 認証に、自作 App のトークンを発行するコマンドを登録する（本人のトークン（`gh auth token`）は登録しない）
 - [ ] 公式の Claude GitHub App のアクセス対象から、このリポジトリを外す（[workflow](workflow.md#ai-の動かし方)）
 - [ ] fine-grained PAT を2つ作る
-  - `GH_ADMIN_TOKEN`: リポジトリの作成・管理、Secrets・Variables の書き込み
+  - `GH_ADMIN_TOKEN`: リポジトリの作成・管理、Environments・Secrets・Variables の書き込み
     - Repository access: All repositories（新しいリポジトリを作るため）
-    - Repository permissions: Administration（Read and write）、Secrets（Read and write）、Variables（Read and write）、Metadata（Read-only）
-    - Environments は付けない（プロジェクト用トークンは Environment ではなく Actions Secrets に書くため）
+    - Repository permissions: Administration（Read and write）、Environments（Read and write）、Secrets（Read and write）、Variables（Read and write）、Metadata（Read-only）
+    - Environments は、プロジェクトのリポジトリに main 限定の Environment を作り、そこにプロジェクト用トークンを書き込むために付ける
     - Contents は付けない（各プロジェクトにファイルを配るようになったら追加する）
   - `GH_READ_TOKEN`: 読み取りのみ
+    - Repository permissions: Administration、Environments、Secrets、Variables、Metadata をすべて Read-only（plan で管理対象の状態を読むため）
 
 ## 2. Cloudflare
 
