@@ -23,8 +23,8 @@
 AI がコードを書いて PR を作成
   → 自分が差分を確認して `/plan` とコメント
   → plan のワークフロー（.github/workflows/plan.yml）が PR のコードで plan し、結果を PR にコメントする
-  → 自分が承認してマージ
-  → main への push で apply のワークフロー（.github/workflows/apply.yml）が動く（Environment の承認後に実行）
+  → 自分が承認してマージ（`/plan` から時間が経ったり、別の PR を先にマージしたりした場合は、もう一度 `/plan` する）
+  → main への push で apply のワークフロー（.github/workflows/apply.yml）が動く
 ```
 
 - Terraform などのツールは [mise](https://mise.jdx.dev/) で管理する。バージョンは `mise.toml`、チェックサムは `mise.lock` に記録し、CI も同じものを入れる。

@@ -16,12 +16,12 @@
    - plan ジョブは Environment `platform-plan` の Secrets を使う。plan には実行前の承認ステップを設けていないので、コメントするとすぐに動く（理由は [plan に承認ステップを設けない理由](#plan-に承認ステップを設けない理由)）。
 4. **plan の結果を確認する**
    - 結果は PR にコメントされる。`destroy` や `replace` が出ていたら、必ず理由を確認する。
+   - `/plan` から時間が経った場合や、別の PR を先にマージした場合は、マージ前にもう一度 `/plan` して、最新の状態で確認する（理由は [apply に承認ステップを設けない理由](#apply-に承認ステップを設けない理由)）。
 5. **自分が承認してマージする**
    - main は保護されていて、マージには自分の承認が必要。AI は自分で作った PR を承認できない。
 6. **main への push で apply**
-   - apply ジョブは Environment `platform-apply` を使う。この Environment には required reviewers（自分）を設定しているので、ジョブは「承認待ち」で止まる。
-   - Actions の画面で「Review deployments」→「Approve and deploy」を押すと、Secrets がジョブに渡されて apply が動く。PR の承認とは別物。
-   - apply は改めて plan してから実行するので、マージ後に `/plan` 時点と差分が出ていないか確認する。
+   - apply ジョブは Environment `platform-apply` の Secrets を使う。apply には実行前の承認ステップを設けていないので、マージするとすぐに動く（理由は [apply に承認ステップを設けない理由](#apply-に承認ステップを設けない理由)）。
+   - apply は改めて plan してから実行する。マージ前の `/plan` で、最新の状態の plan を確認しておく。
 
 ## AI の動かし方
 
@@ -50,6 +50,17 @@
 
 ただし、plan でも `platform-tfstate` は読める（＝プロジェクト用トークンは見える）。そのため、`/plan` の前の差分確認は省略しない。
 
+## apply に承認ステップを設けない理由
+
+以前は `platform-apply` に required reviewers（自分）を設定していたが、外した。
+
+- Environment の承認はジョブが始まる前に求められるので、承認の時点では、実際に適用される plan を見られない。見ないまま押すだけの確認になっていた。
+- main への変更は PR 経由でしか入らず、マージ前に `/plan` で確認している。承認が防いでいたものは少ない。
+
+代わりに、`/plan` から時間が経った場合や、別の PR を先にマージした場合は、マージ前にもう一度 `/plan` して、最新の状態で確認する。
+
+`platform-apply` の Secrets が main 以外から使えないのは、使えるブランチ（main のみ）の制限で守る。経緯は [decisions](decisions.md#13-apply-には承認ステップを設けない)。
+
 ## plan 前に確認すること
 
 plan は PR のコードをある程度実行する（外部コマンドを実行する data source や、任意の provider が動く）。そのため、次のような変更がないかを plan 前に確認する。
@@ -65,13 +76,13 @@ plan は PR のコードをある程度実行する（外部コマンドを実�
 | Environment | required reviewers | 使えるブランチ |
 | --- | --- | --- |
 | `platform-plan` | なし | main のみ（`issue_comment` は main で動くので問題ない） |
-| `platform-apply` | 自分 | main のみ |
+| `platform-apply` | なし | main のみ |
 
 この設定は platform 自身では管理せず、手動で行う。
 
 ## 公開リポジトリとしてのルール
 
-このリポジトリは公開されている（GitHub Free でも Environments と required reviewers を使うため）。
+このリポジトリは公開されている（GitHub Free でも Environments を使うため）。
 
 - 秘密や個人情報（メールアドレスなど）をコードに書かない。変数にして、値は Environment Secrets から渡し、`sensitive = true` を付ける。
 - PR へのコメントや Actions のログも公開される。plan の出力に個人情報が出ないことを確認する。
